@@ -12,6 +12,7 @@ import {
 } from "@gestionresidencial/shared-ui";
 import { ApiClientError } from "@gestionresidencial/auth-client";
 import type { PublicacionInput } from "@/lib/wall-client";
+import { hoyEnColombia } from "@/lib/format-date";
 
 export function PublicacionForm({
   initial,
@@ -72,6 +73,8 @@ export function PublicacionForm({
         defaultValue={initial?.titulo}
         required
         maxLength={150}
+        pattern=".*\S.*"
+        title="El título no puede estar vacío."
         disabled={pending}
       />
       <div className="gr-field">
@@ -104,7 +107,7 @@ export function PublicacionForm({
         label="Vigente hasta (opcional)"
         type="date"
         defaultValue={initial?.vigenciaHasta ?? ""}
-        min={new Date().toISOString().slice(0, 10)}
+        min={hoyEnColombia()}
         disabled={pending}
       />
       {error && <Feedback error>{error}</Feedback>}
