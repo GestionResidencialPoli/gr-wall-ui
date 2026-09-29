@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { AppShell, Button, EmptyState, Feedback, Skeleton } from "@gestionresidencial/shared-ui";
-import { authUiLoginUrl, type Role } from "@gestionresidencial/auth-client";
+import { usePathname } from "next/navigation";
+import { EmptyState, Feedback, PlatformShell, Skeleton } from "@gestionresidencial/shared-ui";
+import { authUiLoginUrl, openPlatformUrl, type Role } from "@gestionresidencial/auth-client";
 import { useAuth } from "./auth-provider";
 
 export function AuthenticatedShell({
@@ -15,6 +16,7 @@ export function AuthenticatedShell({
   const { user, loading, sessionError, logout } = useAuth();
   const [pending, setPending] = useState(false);
   const [logoutError, setLogoutError] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
     if (!loading && !sessionError && !user) window.location.replace(authUiLoginUrl());
@@ -41,7 +43,7 @@ export function AuthenticatedShell({
     );
   }
 
-  if (sessionError) {
+  if (sessionError || !user) {
     return (
       <div className="standalone-state">
         <EmptyState
@@ -52,27 +54,16 @@ export function AuthenticatedShell({
     );
   }
 
-  const hasAccess = !requiredRole || user!.roles.includes(requiredRole);
+  const hasAccess = !requiredRole || user.roles.includes(requiredRole);
 
   return (
-    <AppShell
-      brand={{ name: "Habitar", description: "El muro de tu comunidad", mark: "h.", href: "/" }}
-      navigation={[{ id: "home", label: "Muro", href: "/" }]}
-      activeId="home"
-      user={{ name: user!.name, caption: "Mi cuenta" }}
-      userMenuItems={[]}
-      labels={{
-        navigation: "El muro",
-        menu: "Abrir navegación",
-        skip: "Saltar al contenido",
-        footer: "Un canal oficial para tu comunidad",
-      }}
-      eyebrow="El muro de tu comunidad"
-      actions={
-        <Button variant="ghost" disabled={pending} onClick={signOut}>
-          {pending ? "Cerrando sesión" : "Cerrar sesión"}
-        </Button>
-      }
+    <PlatformShell
+      app="wall"
+      pathname={pathname}
+      user={user}
+      onOpenApp={(url) => void openPlatformUrl(user.roles, url)}
+      onLogout={signOut}
+      loggingOut={pending}
     >
       {logoutError && <Feedback error>No se pudo cerrar sesión. Inténtalo de nuevo.</Feedback>}
       {hasAccess ? (
@@ -83,6 +74,6 @@ export function AuthenticatedShell({
           description="Esta página es solo para el rol de administración."
         />
       )}
-    </AppShell>
+    </PlatformShell>
   );
 }
