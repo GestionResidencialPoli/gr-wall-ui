@@ -21,6 +21,18 @@
   margin: 12vh auto;
   padding: 24px;
 }
+.gr-wall-notification {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding: 12px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
 .gr-field select,
 .gr-field textarea {
   width: 100%;
