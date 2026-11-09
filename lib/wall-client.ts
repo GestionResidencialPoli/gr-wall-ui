@@ -69,3 +69,35 @@ export async function unpinPublicacion(id: number): Promise<Publicacion> {
 export async function deletePublicacion(id: number): Promise<void> {
   await apiFetch(`${BASE_PATH}/${id}`, { method: "DELETE" });
 }
+
+export async function createWallEventsTicket(): Promise<string> {
+  const { payload } = await apiFetch<{ payload: { ticket: string } }>(`${BASE_PATH}/eventos/ticket`);
+  return payload.ticket;
+}
+
+export function wallEventsWebSocketUrl(ticket: string): string {
+  const configuredOrigin = process.env.NEXT_PUBLIC_BACKEND_WS_URL;
+  const origin = configuredOrigin ? configuredOrigin.replace(/\/$/, "") : defaultWebSocketOrigin();
+  const url = new URL(`${origin}${BASE_PATH}/eventos/ws`);
+  url.searchParams.set("ticket", ticket);
+  return url.toString();
+}
+
+function defaultWebSocketOrigin(): string {
+  const { hostname, protocol } = window.location;
+  const websocketProtocol = protocol === "https:" ? "wss:" : "ws:";
+
+  if (hostname === "localhost" || hostname === "127.0.0.1") {
+    return `${websocketProtocol}//${hostname}:4000`;
+  }
+
+  if (hostname.endsWith(".gr.local")) {
+    return `${websocketProtocol}//gateway.gr.local`;
+  }
+
+  if (hostname.startsWith("muro.")) {
+    return `${websocketProtocol}//api.${hostname.slice("muro.".length)}`;
+  }
+
+  return `${websocketProtocol}//${hostname}`;
+}
