@@ -84,20 +84,6 @@ export function wallEventsWebSocketUrl(ticket: string): string {
 }
 
 function defaultWebSocketOrigin(): string {
-  const { hostname, protocol } = window.location;
-  const websocketProtocol = protocol === "https:" ? "wss:" : "ws:";
-
-  if (hostname === "localhost" || hostname === "127.0.0.1") {
-    return `${websocketProtocol}//${hostname}:4000`;
-  }
-
-  if (hostname.endsWith(".gr.local")) {
-    return `${websocketProtocol}//gateway.gr.local`;
-  }
-
-  if (hostname.startsWith("muro.")) {
-    return `${websocketProtocol}//api.${hostname.slice("muro.".length)}`;
-  }
-
-  return `${websocketProtocol}//${hostname}`;
+  const { host, protocol } = window.location;
+  return `${protocol === "https:" ? "wss:" : "ws:"}//${host}`;
 }
