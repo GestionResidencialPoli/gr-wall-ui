@@ -23,6 +23,8 @@ No hay login propio. Un usuario ya autenticado en `gr-common-ui` (residente o vi
 
 Todas las llamadas van a `/api/v1/publicaciones` (`gr-wall-microservice`) a través del gateway (`gr-api-gateway`). `BACKEND_API_URL` debe apuntar al gateway (`http://localhost:4000` en local), no a un microservicio directo.
 
+Las notificaciones en tiempo real usan un WebSocket en el mismo origen de la página (`/api/v1/publicaciones/eventos/ws`): en el stack local nginx (`gr-infra/nginx`) reenvía `/api/` al gateway, incluido el upgrade. Sin nginx (`pnpm dev`), define `NEXT_PUBLIC_BACKEND_WS_URL=ws://localhost:4000` antes de compilar.
+
 ## Desarrollo local
 
 ```bash
