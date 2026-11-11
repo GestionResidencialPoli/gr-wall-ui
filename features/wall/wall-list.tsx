@@ -15,7 +15,14 @@ import {
   type PublicacionResumen,
 } from "@gestionresidencial/shared-ui";
 import { useAuth } from "@/features/auth/auth-provider";
-import { deletePublicacion, listPublicaciones, pinPublicacion, unpinPublicacion } from "@/lib/wall-client";
+import {
+  createWallEventsTicket,
+  deletePublicacion,
+  listPublicaciones,
+  pinPublicacion,
+  unpinPublicacion,
+  wallEventsWebSocketUrl,
+} from "@/lib/wall-client";
 import { formatDate } from "@/lib/format-date";
 
 const PAGE_SIZE = 10;
@@ -40,6 +47,7 @@ function WallListForCategory({ categoria }: { categoria?: CategoriaPublicacion }
   const [loadingMore, setLoadingMore] = useState(false);
   const [pendingId, setPendingId] = useState<number | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+  const [notification, setNotification] = useState<string | null>(null);
 
   const load = useCallback(
     async (targetPage: number, replace: boolean) => {
@@ -77,6 +85,45 @@ function WallListForCategory({ categoria }: { categoria?: CategoriaPublicacion }
       active = false;
     };
   }, [categoria]);
+
+  useEffect(() => {
+    let active = true;
+    let socket: WebSocket | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
+
+    async function connect() {
+      try {
+        const ticket = await createWallEventsTicket();
+        if (!active) return;
+
+        socket = new WebSocket(wallEventsWebSocketUrl(ticket));
+        socket.onmessage = (message) => {
+          try {
+            const event = JSON.parse(message.data) as { type?: string };
+            if (event.type !== "post.created") return;
+            setNotification("La administración publicó una nueva comunicación.");
+            void load(0, true);
+          } catch {
+            return;
+          }
+        };
+        socket.onclose = () => {
+          if (!active) return;
+          reconnectTimer = setTimeout(() => void connect(), 3000);
+        };
+      } catch {
+        if (active) reconnectTimer = setTimeout(() => void connect(), 3000);
+      }
+    }
+
+    void connect();
+
+    return () => {
+      active = false;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      socket?.close();
+    };
+  }, [load]);
 
   function hrefForCategory(next: CategoriaPublicacion | undefined): string {
     const query = new URLSearchParams(searchParams);
@@ -136,6 +183,14 @@ function WallListForCategory({ categoria }: { categoria?: CategoriaPublicacion }
 
   return (
     <>
+      {notification && (
+        <div className="gr-wall-notification" role="status">
+          <span>{notification}</span>
+          <Button variant="ghost" onClick={() => setNotification(null)}>
+            Cerrar
+          </Button>
+        </div>
+      )}
       <div className="gr-wall-filters">
         <Link href={hrefForCategory(undefined)} aria-current={!categoria}>
           Todas
