@@ -6,8 +6,8 @@ import type {
   PublicacionResumen,
 } from "@gestionresidencial/shared-ui";
 
-const GRAPHQL_PATH = "/graphql";
 const BASE_PATH = "/api/v1/publicaciones";
+const GRAPHQL_PATH = `${BASE_PATH}/graphql`;
 
 type GraphQLResponse<T> = {
   data?: T;
@@ -21,17 +21,34 @@ export type PublicacionInput = {
   vigenciaHasta?: string | null;
 };
 
-async function graphQLRequest<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
-  const response = await apiFetch<GraphQLResponse<T>>(GRAPHQL_PATH, {
-    method: "POST",
-    body: { query, variables },
-  });
+const STATUS_BY_CODE: Record<string, number> = {
+  NOT_FOUND: 404,
+  FORBIDDEN: 403,
+  CONFLICT: 409,
+  UNAUTHENTICATED: 401,
+  INTERNAL_SERVER_ERROR: 500,
+};
 
-  const error = response.errors?.[0];
-  if (error) {
-    const status = error.extensions?.code === "NOT_FOUND" ? 404 : error.extensions?.code === "FORBIDDEN" ? 403 : 400;
-    throw new ApiClientError(status, response);
+function toApiError(fallbackStatus: number, body: unknown): ApiClientError {
+  const error = (body as GraphQLResponse<unknown> | null)?.errors?.[0];
+  if (!error) return new ApiClientError(fallbackStatus, body);
+  const status = STATUS_BY_CODE[error.extensions?.code ?? ""] ?? 400;
+  return new ApiClientError(status, { error: { message: error.message } });
+}
+
+async function graphQLRequest<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
+  let response: GraphQLResponse<T>;
+
+  try {
+    response = await apiFetch<GraphQLResponse<T>>(GRAPHQL_PATH, {
+      method: "POST",
+      body: { query, variables },
+    });
+  } catch (error) {
+    throw error instanceof ApiClientError ? toApiError(error.status, error.body) : error;
   }
+
+  if (response.errors?.length) throw toApiError(400, response);
   if (!response.data) throw new ApiClientError(502, response);
   return response.data;
 }
