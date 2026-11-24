@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@gestionresidencial/auth-client";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -16,13 +17,12 @@ import {
 } from "@gestionresidencial/shared-ui";
 import { useAuth } from "@/features/auth/auth-provider";
 import {
-  createWallEventsTicket,
   deletePublicacion,
   listPublicaciones,
   pinPublicacion,
   unpinPublicacion,
-  wallEventsWebSocketUrl,
 } from "@/lib/wall-client";
+import { connectHub } from "@/features/notifications/hub-connection";
 import { formatDate } from "@/lib/format-date";
 
 const PAGE_SIZE = 10;
@@ -86,44 +86,18 @@ function WallListForCategory({ categoria }: { categoria?: CategoriaPublicacion }
     };
   }, [categoria]);
 
-  useEffect(() => {
-    let active = true;
-    let socket: WebSocket | null = null;
-    let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
-
-    async function connect() {
-      try {
-        const ticket = await createWallEventsTicket();
-        if (!active) return;
-
-        socket = new WebSocket(wallEventsWebSocketUrl(ticket));
-        socket.onmessage = (message) => {
-          try {
-            const event = JSON.parse(message.data) as { type?: string };
-            if (event.type !== "post.created") return;
-            setNotification("La administración publicó una nueva comunicación.");
-            void load(0, true);
-          } catch {
-            return;
-          }
-        };
-        socket.onclose = () => {
-          if (!active) return;
-          reconnectTimer = setTimeout(() => void connect(), 3000);
-        };
-      } catch {
-        if (active) reconnectTimer = setTimeout(() => void connect(), 3000);
-      }
-    }
-
-    void connect();
-
-    return () => {
-      active = false;
-      if (reconnectTimer) clearTimeout(reconnectTimer);
-      socket?.close();
-    };
-  }, [load]);
+  useEffect(
+    () =>
+      connectHub(
+        () => apiFetch("/api/v1/auth/me"),
+        (type) => {
+          if (type !== "post.created") return;
+          setNotification("La administración publicó una nueva comunicación.");
+          void load(0, true);
+        },
+      ),
+    [load],
+  );
 
   function hrefForCategory(next: CategoriaPublicacion | undefined): string {
     const query = new URLSearchParams(searchParams);

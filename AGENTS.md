@@ -10,7 +10,7 @@ Sin comentarios en el código, salvo que el nombre de la variable/función no ba
 
 Todo pasa por el gateway (`BACKEND_API_URL`, por defecto `http://localhost:4000` en local), nunca directo a un microservicio. El muro vive en `gr-wall-microservice` bajo `/api/v1/publicaciones`.
 
-- Las respuestas de lectura/escritura individual vienen envueltas en `{ payload }`; el listado en `{ payload: { content, page, size, totalElements, totalPages } }`.
+- El CRUD usa GraphQL en `POST /api/v1/publicaciones/graphql` (`lib/wall-client.ts`); los errores de GraphQL se normalizan a `ApiClientError` con cuerpo `{ error: { message } }`.
 - Errores: `{ error: { message } }` (validación Zod agrega `details: [{ path, message }]`).
 - Categorías fijas: `AVISO | NOTICIA | URGENTE | MANTENIMIENTO`.
 - Máximo 3 publicaciones fijadas simultáneas (`409` si se excede).
